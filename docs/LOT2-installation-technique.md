@@ -193,8 +193,6 @@ sudo dpkg -i trivy_0.48.0_Linux-64bit.deb
 # Vérification
 trivy --version
 
-# Optionnel : k9s (interface TUI pour Kubernetes)
-curl -sS https://webinstall.dev/k9s | bash
 ```
 
 ## 4. Configuration du réseau
