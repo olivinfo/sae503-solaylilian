@@ -10,7 +10,7 @@ Déployer l'application dans un environnement "cloud native" basé sur l'orchest
 
 ## Équipe
 
-- **Membres** : [À compléter]
+- **Membres** : Lilian GAUDIN & SOlaymane El-Kaldaoui
 - **Date limite** : 02 février 2026 à 12h00
 - **Tag Git** : sae503
 
