@@ -6,13 +6,13 @@ from flasgger import Swagger
 from functools import wraps
 
 # Configuration des variables d'environnement
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_DB = int(os.getenv("REDIS_DB", 0))
-APP_PORT = int(os.getenv("APP_PORT", 5000))
-ADMIN_KEY = os.getenv("ADMIN_KEY", "default_key")
-CSV_FILE_USERS = os.getenv("CSV_FILE", "initial_data_users.csv")
-CSV_FILE_QUOTES = os.getenv("CSV_FILE", "initial_data_quotes.csv")
+REDIS_HOST = "redis"
+REDIS_PORT =  6379
+REDIS_DB = 0
+APP_PORT = 5000
+ADMIN_KEY = "default_key"
+CSV_FILE_USERS = "initial_data_users.csv"
+CSV_FILE_QUOTES = "initial_data_quotes.csv"
 
 # Initialisation de Flask et Swagger
 app = Flask(__name__)
