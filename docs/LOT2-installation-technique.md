@@ -180,8 +180,9 @@ kubectl get pods -n kube-system | grep metrics-server
 
 ```bash
 # Installation de Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 
+chmod +x get_helm.sh
+./get_helm.sh
 # Vérification
 helm version
 
