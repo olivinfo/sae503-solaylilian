@@ -102,3 +102,9 @@ Certaines opérations nécessitent un jeton d'authentification dans l'en-tête "
 ### Infrastructure
 - Infrastructure mono-noeud 
 - Un cluster par environnement
+
+## Accès aux services
+```cmd
+minikube mount /home/user/sae503-solaylilian/BDD_microservice/../BDD_microservice:/data/bdd -p dev-env
+kubectl port-forward svc/citation-service 30002:5000 -n sae503 --address 0.0.0.0
+```
