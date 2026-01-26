@@ -15,4 +15,4 @@ ENV APP_PORT=5000
 
 EXPOSE 5000
 
-CMD ["python3", "citations_haddock.py"]
+CMD ["python3", "app.py"]

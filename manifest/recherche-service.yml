@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: result
+  name: recherche-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: citation
+      app: recherche-service
   template:
     metadata:
       labels:
-        app: citation
+        app: recherche-service
     spec:
       containers:
-      - name: citation
-        image: pelele:123
+      - name: recherche-service
+        image: recherche-image:124
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -22,12 +22,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: citation
+  name: recherche-service
 spec:
   type: LoadBalancer
   ports:
   - port: 5000
     targetPort: 5000
-    nodePort: 30001
+    nodePort: 30003
   selector:
-    app: citation
+    app: recherche-service

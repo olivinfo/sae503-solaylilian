@@ -8,7 +8,7 @@ spec:
   accessModes:
   - ReadWriteOnce
   hostPath:
-    path: /home/user/sae503-solaylilian
+    path: /home/user/sae503-solaylilian/BDD_microservice/data
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -13,6 +13,7 @@ APP_PORT = 5000
 ADMIN_KEY = "default_key"
 CSV_FILE_USERS = "../BDD_microservice/initial_data_users.csv"
 CSV_FILE_QUOTES = "../BDD_microservice/initial_data_quotes.csv"
+
 # Initialisation de Flask et Swagger
 app = Flask(__name__)
 swagger = Swagger(app)
@@ -51,63 +52,37 @@ if not redis_client.exists("quotes:1"):
                redis_client.hset(f"quotes:{quote_id}", mapping={"quote": quote})
                redis_client.sadd("quotes",f"quotes:{quote_id}")
 
-# Endpoint: Service des utilisateurs
-@app.route('/users', methods=['GET'])
+# Endpoint: Service de recherche
+@app.route('/search', methods=['GET'])
 @require_auth
-def get_users():
+def search_quotes():
     """
-    Récupérer la liste des utilisateurs
-    ---
-    security:
-      - APIKeyAuth: []
-    responses:
-      200:
-        description: Liste des utilisateurs
-    """
-    users_ids = redis_client.smembers("users")
-    users=[]
-    for user_id in users_ids:
-        users.append(redis_client.hgetall(user_id))
-    print(users)
-    return jsonify(users), 200
-
-@app.route('/users', methods=['POST'])
-@require_auth
-def add_user():
-    """
-    Ajouter un utilisateur
+    Rechercher des citations par mot-clé
     ---
     security:
       - APIKeyAuth: []
     parameters:
-      - name: user
-        in: body
+      - name: keyword
+        in: query
         required: true
-        schema:
-          type: object
-          properties:
-            id:
-              type: string
-            name:
-              type: string
-            password:
-              type: string
+        type: string
     responses:
-      201:
-        description: Utilisateur ajouté
+      200:
+        description: Liste des citations correspondantes
     """
-    data = request.get_json()
-    user_id = data.get("id")
-    name = data.get("name")
-    password = data.get("password")
+    keyword = request.args.get("keyword")
 
-    if not user_id or not name:
-        return jsonify({"error": "ID et nom sont requis"}), 400
+    if not keyword:
+        return jsonify({"error": "Mot-clé requis"}), 400
 
-    redis_client.hset(f"users:{user_id}", mapping={"id": user_id,"name": name, "password": password})
-    redis_client.sadd("users",f"users:{user_id}")
-    return jsonify({"message": "Utilisateur ajouté"}), 201
-
+    members = redis_client.smembers("quotes")
+    filtered_quotes = []
+    for member in members:
+        quote_object = redis_client.hgetall(member)
+        quote = quote_object.get("quote","")
+        if keyword.lower() in quote.lower():
+            filtered_quotes.append(quote)
+    return jsonify(filtered_quotes), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=APP_PORT)
