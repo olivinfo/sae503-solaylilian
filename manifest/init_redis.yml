@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-redis
+  namespace: sae503
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-redis
+        image: init-redis-image:125
+        volumeMounts:
+        - name: csv-data
+          mountPath: /BDD_microservice
+          readOnly: true
+      volumes:
+      - name: csv-data
+        hostPath:
+          path: /data/bdd
+          type: Directory
+      restartPolicy: OnFailure
