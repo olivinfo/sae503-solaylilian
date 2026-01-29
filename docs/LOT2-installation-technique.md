@@ -180,7 +180,7 @@ kubectl get pods -n kube-system | grep metrics-server
 
 ```bash
 # Installation de Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
 
 # Vérification
 helm version
@@ -192,8 +192,6 @@ sudo dpkg -i trivy_0.48.0_Linux-64bit.deb
 # Vérification
 trivy --version
 
-# Optionnel : k9s (interface TUI pour Kubernetes)
-curl -sS https://webinstall.dev/k9s | bash
 ```
 
 ## 4. Configuration du réseau
