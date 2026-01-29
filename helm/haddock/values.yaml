@@ -15,20 +15,19 @@ citation:
   enabled: true
   replicaCount: 1
   image:
-    name: citation-image
-    tag: "124"
+    name: solaymane/sae503-citation
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
     nodePort: 30002
-
 # Service User
 user:
   enabled: true
   replicaCount: 1
   image:
-    name: user-image
-    tag: "124"
+    name: solaymane/sae503-user
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
@@ -39,8 +38,8 @@ recherche:
   enabled: true
   replicaCount: 1
   image:
-    name: recherche-image
-    tag: "124"
+    name: solaymane/sae503-recherche
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
@@ -50,6 +49,6 @@ recherche:
 initRedis:
   enabled: true
   image:
-    name: init-redis-image
-    tag: "125"
+    name: solaymane/sae503-init-redis
+    tag: "1.0.0"
   dataPath: /data/bdd
