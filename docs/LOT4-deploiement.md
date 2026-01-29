@@ -3,82 +3,81 @@
 ## 1. Introduction
 
 ### 1.1 Objectif
-Déployer l'application refactorisée dans Kubernetes avec :
-- 2 environnements (production et qualification)
-- Gestion via Traefik pour l'accès HTTP
-- Rate limiting configuré
-- Scaling horizontal
+Déployer l'application Haddock (gestion des citations du Capitaine Haddock) dans Kubernetes en utilisant :
+- Des manifests Kubernetes simples
+- Un chart Helm pour un déploiement flexible
 
 ### 1.2 Prérequis
 - Cluster Kubernetes opérationnel (voir LOT2)
-- Images Docker des 3 microservices disponibles
-- Namespaces créés
+- Images Docker disponibles sur Docker Hub (`solaymane/sae503-*`)
+- Helm installé (pour le déploiement via Helm)
 
 ## 2. Structure du repository
 
 ```
-k8s/
-├── base/
-│   ├── redis/
-│   │   ├── statefulset.yaml
-│   │   ├── service.yaml
-│   │   └── pvc.yaml
-│   ├── users/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── configmap.yaml
-│   ├── quotes/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── configmap.yaml
-│   └── search/
-│       ├── deployment.yaml
-│       ├── service.yaml
-│       └── configmap.yaml
-├── production/
-│   ├── namespace.yaml
-│   ├── secrets.yaml
-│   ├── resourcequota.yaml
-│   ├── ingress.yaml
-│   └── kustomization.yaml
-└── qualification/
-    ├── namespace.yaml
-    ├── secrets.yaml
-    ├── resourcequota.yaml
-    ├── ingress.yaml
-    └── kustomization.yaml
+sae503-solaylilian/
+├── manifest/                    # Manifests Kubernetes
+│   ├── redis.yml               # PV, PVC, Deployment et Service Redis
+│   ├── citation-service.yml    # Deployment et Service Citation
+│   ├── user-service.yml        # Deployment et Service User
+│   ├── recherche-service.yml   # Deployment et Service Recherche
+│   ├── init_redis.yml          # Job d'initialisation des données
+│   └── traefik.yml             # Ingress Controller Traefik
+├── helm/
+│   └── haddock/                # Chart Helm
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
+├── citation_microservice/      # Code source + Dockerfile
+├── user_microservice/          # Code source + Dockerfile
+├── recherche_microservice/     # Code source + Dockerfile
+├── init_redis_job/             # Job d'init + Dockerfile
+└── BDD_microservice/           # Données CSV initiales
+    ├── initial_data_quotes.csv
+    └── initial_data_users.csv
 ```
 
-## 3. Manifestes Redis
+## 3. Méthode 1 : Déploiement avec Kubectl (Manifests)
 
-### 3.1 PersistentVolumeClaim
+### 3.1 Manifest Redis
 
-**Fichier** : `k8s/base/redis/pvc.yaml`
+**Fichier** : `manifest/redis.yml`
+
+Ce manifest crée :
+- Un PersistentVolume (1Gi) avec hostPath
+- Un PersistentVolumeClaim
+- Un Deployment Redis
+- Un Service ClusterIP
 
 ```yaml
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+    name: my-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  hostPath:
+    path: /home/user/sae503-solaylilian/BDD_microservice/data
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: redis-pvc
+  name: db-data
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-```
-
-### 3.2 StatefulSet
-
-**Fichier** : `k8s/base/redis/statefulset.yaml`
-
-```yaml
+---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: redis
 spec:
-  serviceName: redis
   replicas: 1
   selector:
     matchLabels:
@@ -88,533 +87,177 @@ spec:
       labels:
         app: redis
     spec:
-      securityContext:
-        fsGroup: 999
-        runAsUser: 999
-        runAsNonRoot: true
       containers:
       - name: redis
-        image: redis:7-alpine
+        image: redis:alpine
         ports:
         - containerPort: 6379
-          name: redis
         volumeMounts:
-        - name: redis-data
+        - name: db-data
           mountPath: /data
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        livenessProbe:
-          tcpSocket:
-            port: 6379
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 5
-          periodSeconds: 5
       volumes:
-      - name: redis-data
+      - name: db-data
         persistentVolumeClaim:
-          claimName: redis-pvc
-```
-
-### 3.3 Service
-
-**Fichier** : `k8s/base/redis/service.yaml`
-
-```yaml
+          claimName: db-data
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: redis
 spec:
-  selector:
-    app: redis
   ports:
   - port: 6379
     targetPort: 6379
-  clusterIP: None
+  selector:
+    app: redis
 ```
 
-## 4. Manifestes Service Users
+### 3.2 Manifest Service Citation
 
-### 4.1 ConfigMap
-
-**Fichier** : `k8s/base/users/configmap.yaml`
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: users-config
-data:
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  REDIS_DB: "0"
-  APP_PORT: "5000"
-  CSV_FILE_USERS: "initial_data_users.csv"
-```
-
-### 4.2 Deployment
-
-**Fichier** : `k8s/base/users/deployment.yaml`
+**Fichier** : `manifest/citation-service.yml`
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: users
+  name: citation-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: users
+      app: citation-service
   template:
     metadata:
       labels:
-        app: users
+        app: citation-service
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       containers:
-      - name: users
-        image: haddock-users:latest
+      - name: citation-service
+        image: solaymane/sae503-citation:1.0.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
-        envFrom:
-        - configMapRef:
-            name: users-config
-        env:
-        - name: ADMIN_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: ADMIN_KEY
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "100m"
-          limits:
-            memory: "128Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
-```
-
-### 4.3 Service
-
-**Fichier** : `k8s/base/users/service.yaml`
-
-```yaml
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: users
+  name: citation-service
 spec:
-  selector:
-    app: users
+  type: LoadBalancer
   ports:
   - port: 5000
     targetPort: 5000
-  type: ClusterIP
-```
-
-### 4.4 HorizontalPodAutoscaler
-
-**Fichier** : `k8s/base/users/hpa.yaml`
-
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: users-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: users
-  minReplicas: 2
-  maxReplicas: 5
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-```
-
-## 5. Manifestes Service Quotes
-
-### 5.1 ConfigMap
-
-**Fichier** : `k8s/base/quotes/configmap.yaml`
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: quotes-config
-data:
-  REDIS_HOST: redis
-  REDIS_PORT: "6379"
-  REDIS_DB: "0"
-  APP_PORT: "5000"
-  CSV_FILE_QUOTES: "initial_data_quotes.csv"
-```
-
-### 5.2 Deployment
-
-**Fichier** : `k8s/base/quotes/deployment.yaml`
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: quotes
-spec:
-  replicas: 2
+    nodePort: 30002
   selector:
-    matchLabels:
-      app: quotes
+    app: citation-service
+```
+
+### 3.3 Manifest Service User
+
+**Fichier** : `manifest/user-service.yml`
+
+Structure identique au service Citation avec :
+- Image : `solaymane/sae503-user:1.0.0`
+- NodePort : `30001`
+
+### 3.4 Manifest Service Recherche
+
+**Fichier** : `manifest/recherche-service.yml`
+
+Structure identique au service Citation avec :
+- Image : `solaymane/sae503-recherche:1.0.0`
+- NodePort : `30003`
+
+### 3.5 Job d'initialisation Redis
+
+**Fichier** : `manifest/init_redis.yml`
+
+Ce Job charge les données CSV initiales dans Redis :
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-redis
+  namespace: sae503
+spec:
   template:
-    metadata:
-      labels:
-        app: quotes
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       containers:
-      - name: quotes
-        image: haddock-quotes:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 5000
-        envFrom:
-        - configMapRef:
-            name: quotes-config
-        env:
-        - name: ADMIN_KEY
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: ADMIN_KEY
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "100m"
-          limits:
-            memory: "128Mi"
-            cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
+      - name: init-redis
+        image: solaymane/sae503-init-redis:1.0.0
+        volumeMounts:
+        - name: csv-data
+          mountPath: /BDD_microservice
+          readOnly: true
+      volumes:
+      - name: csv-data
+        hostPath:
+          path: /data/bdd
+          type: Directory
+      restartPolicy: OnFailure
 ```
 
-### 5.3 Service et HPA
-
-Similaires au service Users (adapter les noms).
-
-## 6. Manifestes Service Search
-
-Structure similaire aux services Users et Quotes (voir sections 4 et 5).
-
-## 7. Configuration par environnement
-
-### 7.1 Production
-
-**Fichier** : `k8s/production/namespace.yaml`
-
-```yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: production
-```
-
-**Fichier** : `k8s/production/secrets.yaml`
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: app-secrets
-  namespace: production
-type: Opaque
-stringData:
-  ADMIN_KEY: "production_secret_key_change_me"
-```
-
-**Fichier** : `k8s/production/resourcequota.yaml`
-
-```yaml
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: production-quota
-  namespace: production
-spec:
-  hard:
-    requests.cpu: "2"
-    requests.memory: 4Gi
-    limits.cpu: "4"
-    limits.memory: 8Gi
-    pods: "20"
-```
-
-**Fichier** : `k8s/production/ingress.yaml`
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: haddock-ingress
-  namespace: production
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.middlewares: production-ratelimit@kubernetescrd
-spec:
-  rules:
-  - host: production.192.168.1.100.nip.io  # Adapter l'IP
-    http:
-      paths:
-      - path: /users
-        pathType: Prefix
-        backend:
-          service:
-            name: users
-            port:
-              number: 5000
-      - path: /quotes
-        pathType: Prefix
-        backend:
-          service:
-            name: quotes
-            port:
-              number: 5000
-      - path: /search
-        pathType: Prefix
-        backend:
-          service:
-            name: search
-            port:
-              number: 5000
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: ratelimit
-  namespace: production
-spec:
-  rateLimit:
-    average: 10
-    period: 1m
-    burst: 5
-```
-
-### 7.2 Qualification
-
-Structure similaire à Production avec :
-- Namespace : `qualification`
-- Host : `qualification.192.168.1.100.nip.io`
-- Secrets différents
-- ResourceQuota plus restrictifs
-
-## 8. Déploiement avec Kustomize
-
-### 8.1 Base kustomization
-
-**Fichier** : `k8s/base/kustomization.yaml`
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - redis/pvc.yaml
-  - redis/statefulset.yaml
-  - redis/service.yaml
-  - users/configmap.yaml
-  - users/deployment.yaml
-  - users/service.yaml
-  - users/hpa.yaml
-  - quotes/configmap.yaml
-  - quotes/deployment.yaml
-  - quotes/service.yaml
-  - quotes/hpa.yaml
-  - search/configmap.yaml
-  - search/deployment.yaml
-  - search/service.yaml
-  - search/hpa.yaml
-```
-
-### 8.2 Production kustomization
-
-**Fichier** : `k8s/production/kustomization.yaml`
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: production
-
-resources:
-  - namespace.yaml
-  - ../base
-  - secrets.yaml
-  - resourcequota.yaml
-  - ingress.yaml
-
-namePrefix: prod-
-
-commonLabels:
-  environment: production
-```
-
-### 8.3 Qualification kustomization
-
-**Fichier** : `k8s/qualification/kustomization.yaml`
-
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: qualification
-
-resources:
-  - namespace.yaml
-  - ../base
-  - secrets.yaml
-  - resourcequota.yaml
-  - ingress.yaml
-
-namePrefix: qual-
-
-commonLabels:
-  environment: qualification
-
-replicas:
-  - name: users
-    count: 1
-  - name: quotes
-    count: 1
-  - name: search
-    count: 1
-```
-
-## 9. Déploiement
-
-### 9.1 Avec Kustomize
+### 3.6 Commandes de déploiement
 
 ```bash
-# Production
-kubectl apply -k k8s/production/
+# Créer le namespace (si nécessaire)
+kubectl create namespace sae503
 
-# Qualification
-kubectl apply -k k8s/qualification/
+# Déployer Redis en premier
+kubectl apply -f manifest/redis.yml
 
-# Vérification
-kubectl get all -n production
-kubectl get all -n qualification
+# Attendre que Redis soit prêt
+kubectl wait --for=condition=ready pod -l app=redis --timeout=60s
+
+# Déployer les microservices
+kubectl apply -f manifest/citation-service.yml
+kubectl apply -f manifest/user-service.yml
+kubectl apply -f manifest/recherche-service.yml
+
+# Initialiser les données
+kubectl apply -f manifest/init_redis.yml
+
+# Déployer Traefik (optionnel)
+kubectl apply -f manifest/traefik.yml
+
+# Vérifier le déploiement
+kubectl get pods
+kubectl get svc
 ```
 
-### 9.2 Sans Kustomize
+## 4. Méthode 2 : Déploiement avec Helm
 
-```bash
-# Production
-kubectl apply -f k8s/production/namespace.yaml
-kubectl apply -f k8s/production/secrets.yaml
-kubectl apply -f k8s/production/resourcequota.yaml
-kubectl apply -f k8s/base/redis/ -n production
-kubectl apply -f k8s/base/users/ -n production
-kubectl apply -f k8s/base/quotes/ -n production
-kubectl apply -f k8s/base/search/ -n production
-kubectl apply -f k8s/production/ingress.yaml
-
-# Qualification
-# Répéter avec namespace qualification
-```
-
-## 10. Déploiement avec Helm
-
-### 10.1 Pourquoi Helm ?
-
-Helm est le gestionnaire de paquets pour Kubernetes. Voici pourquoi nous l'utilisons :
+### 4.1 Pourquoi Helm ?
 
 | Avantage | Description |
 |----------|-------------|
-| **Templating** | Les valeurs sont centralisées dans `values.yaml`, évitant la duplication |
+| **Templating** | Les valeurs sont centralisées dans `values.yaml` |
 | **Versioning** | Chaque déploiement est versionné, facilitant les rollbacks |
 | **Reproductibilité** | Un seul fichier de valeurs définit tout l'environnement |
 | **Simplicité** | Une commande pour déployer toute l'application |
-| **Gestion des releases** | Helm garde l'historique des déploiements |
 
-### 10.2 Structure du chart Helm
-
-Le chart Helm créé pour ce projet suit une structure simple et minimaliste :
+### 4.2 Structure du chart Helm
 
 ```
-helm/
-└── haddock/
-    ├── Chart.yaml              # Métadonnées du chart
-    ├── values.yaml             # Valeurs par défaut
-    └── templates/
-        ├── _helpers.tpl        # Fonctions de templating réutilisables
-        ├── redis-pv.yaml       # PersistentVolume et PVC pour Redis
-        ├── redis-deployment.yaml
-        ├── redis-service.yaml
-        ├── citation-deployment.yaml
-        ├── citation-service.yaml
-        ├── user-deployment.yaml
-        ├── user-service.yaml
-        ├── recherche-deployment.yaml
-        ├── recherche-service.yaml
-        └── init-redis-job.yaml # Job d'initialisation des données
+helm/haddock/
+├── Chart.yaml              # Métadonnées du chart
+├── values.yaml             # Valeurs par défaut
+└── templates/
+    ├── _helpers.tpl        # Fonctions de templating
+    ├── redis-pv.yaml
+    ├── redis-deployment.yaml
+    ├── redis-service.yaml
+    ├── citation-deployment.yaml
+    ├── citation-service.yaml
+    ├── user-deployment.yaml
+    ├── user-service.yaml
+    ├── recherche-deployment.yaml
+    ├── recherche-service.yaml
+    └── init-redis-job.yaml
 ```
 
-### 10.3 Chart.yaml
-
-Le fichier `Chart.yaml` contient les métadonnées du chart :
+### 4.3 Chart.yaml
 
 ```yaml
 apiVersion: v2
@@ -628,9 +271,7 @@ maintainers:
   - name: Solaymane El-Kaldaoui
 ```
 
-### 10.4 values.yaml
-
-Le fichier `values.yaml` centralise toutes les valeurs configurables :
+### 4.4 values.yaml
 
 ```yaml
 # Configuration globale
@@ -650,8 +291,8 @@ citation:
   enabled: true
   replicaCount: 1
   image:
-    name: citation-image
-    tag: "124"
+    name: solaymane/sae503-citation
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
@@ -662,8 +303,8 @@ user:
   enabled: true
   replicaCount: 1
   image:
-    name: user-image
-    tag: "124"
+    name: solaymane/sae503-user
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
@@ -674,8 +315,8 @@ recherche:
   enabled: true
   replicaCount: 1
   image:
-    name: recherche-image
-    tag: "124"
+    name: solaymane/sae503-recherche
+    tag: "1.0.0"
   service:
     type: LoadBalancer
     port: 5000
@@ -685,36 +326,12 @@ recherche:
 initRedis:
   enabled: true
   image:
-    name: init-redis-image
-    tag: "125"
+    name: solaymane/sae503-init-redis
+    tag: "1.0.0"
   dataPath: /data/bdd
 ```
 
-### 10.5 Comment fonctionne le templating ?
-
-Chaque template utilise les valeurs de `values.yaml` via la syntaxe Go :
-
-```yaml
-# Exemple : citation-deployment.yaml
-{{- if .Values.citation.enabled }}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}-citation
-spec:
-  replicas: {{ .Values.citation.replicaCount }}
-  # ...
-          image: {{ .Values.citation.image.name }}:{{ .Values.citation.image.tag }}
-{{- end }}
-```
-
-**Explications :**
-- `{{ .Values.xxx }}` : Accède aux valeurs du fichier `values.yaml`
-- `{{ .Release.Name }}` : Nom de la release Helm (passé lors du `helm install`)
-- `{{- if ... }}` : Condition pour activer/désactiver un composant
-- `{{- include "haddock.labels" . }}` : Inclut les labels définis dans `_helpers.tpl`
-
-### 10.6 Commandes de déploiement
+### 4.5 Commandes Helm
 
 ```bash
 # Vérifier la syntaxe du chart (dry-run)
@@ -739,16 +356,14 @@ helm upgrade haddock ./helm/haddock
 helm uninstall haddock
 ```
 
-### 10.7 Personnalisation des valeurs
-
-Pour modifier les valeurs sans éditer `values.yaml`, utilisez `--set` :
+### 4.6 Personnalisation des valeurs
 
 ```bash
 # Changer le nombre de réplicas
 helm install haddock ./helm/haddock --set citation.replicaCount=3
 
 # Changer le tag de l'image
-helm install haddock ./helm/haddock --set citation.image.tag="125"
+helm install haddock ./helm/haddock --set citation.image.tag="2.0.0"
 
 # Désactiver un service
 helm install haddock ./helm/haddock --set recherche.enabled=false
@@ -756,46 +371,10 @@ helm install haddock ./helm/haddock --set recherche.enabled=false
 # Combiner plusieurs modifications
 helm install haddock ./helm/haddock \
   --set citation.replicaCount=2 \
-  --set user.replicaCount=2 \
-  --set recherche.replicaCount=2
+  --set user.replicaCount=2
 ```
 
-### 10.8 Création de fichiers values par environnement
-
-Pour gérer plusieurs environnements, créez des fichiers de valeurs spécifiques :
-
-**values-production.yaml :**
-```yaml
-citation:
-  replicaCount: 2
-user:
-  replicaCount: 2
-recherche:
-  replicaCount: 2
-```
-
-**values-qualification.yaml :**
-```yaml
-citation:
-  replicaCount: 1
-user:
-  replicaCount: 1
-recherche:
-  replicaCount: 1
-```
-
-**Déploiement :**
-```bash
-# Production
-helm install haddock-prod ./helm/haddock -f ./helm/haddock/values-production.yaml
-
-# Qualification
-helm install haddock-qual ./helm/haddock -f ./helm/haddock/values-qualification.yaml
-```
-
-### 10.9 Rollback
-
-Helm conserve l'historique des déploiements :
+### 4.7 Rollback avec Helm
 
 ```bash
 # Voir l'historique
@@ -805,217 +384,145 @@ helm history haddock
 helm rollback haddock 1
 ```
 
-## 11. Vérifications
+## 5. Services exposés
 
-### 11.1 État des déploiements
+| Service | Port interne | Type | NodePort | Description |
+|---------|--------------|------|----------|-------------|
+| Redis | 6379 | ClusterIP | - | Base de données |
+| Citation | 5000 | LoadBalancer | 30002 | Gestion des citations |
+| User | 5000 | LoadBalancer | 30001 | Gestion des utilisateurs |
+| Recherche | 5000 | LoadBalancer | 30003 | Recherche de citations |
+
+## 6. Vérifications
+
+### 6.1 État des déploiements
 
 ```bash
-# Production
-kubectl get pods -n production
-kubectl get svc -n production
-kubectl get ingress -n production
+# Voir tous les pods
+kubectl get pods
 
-# Qualification
-kubectl get pods -n qualification
-kubectl get svc -n qualification
-kubectl get ingress -n qualification
+# Voir tous les services
+kubectl get svc
+
+# Voir les détails d'un pod
+kubectl describe pod <nom-du-pod>
 ```
 
-### 11.2 Logs
+### 6.2 Logs
 
 ```bash
 # Logs d'un service
-kubectl logs -f deployment/users -n production
+kubectl logs -f deployment/citation-service
 
-# Logs de tous les pods d'un déploiement
-kubectl logs -f -l app=users -n production
+# Logs de Redis
+kubectl logs -f deployment/redis
 ```
 
-### 11.3 Tests des endpoints
+### 6.3 Tests des endpoints
 
 ```bash
-# Variables
-PROD_HOST="production.192.168.1.100.nip.io"
-QUAL_HOST="qualification.192.168.1.100.nip.io"
-ADMIN_KEY="production_secret_key_change_me"
+# Test Service Citation (via NodePort)
+curl http://<IP-NODE>:30002/citations
 
-# Test Production - Users
-curl http://$PROD_HOST/users -H "Authorization: $ADMIN_KEY"
+# Test Service User
+curl http://<IP-NODE>:30001/users
 
-# Test Production - Quotes
-curl http://$PROD_HOST/quotes
-
-# Test Production - Search
-curl "http://$PROD_HOST/search?keyword=tonnerre" -H "Authorization: $ADMIN_KEY"
-
-# Test Qualification
-curl http://$QUAL_HOST/users -H "Authorization: $ADMIN_KEY"
+# Test Service Recherche
+curl http://<IP-NODE>:30003/search?q=tonnerre
 ```
 
-### 11.4 Test du rate limiting
+## 7. Troubleshooting
 
-```bash
-# Envoyer plus de 10 requêtes en 1 minute
-for i in {1..15}; do
-  echo "Request $i:"
-  curl -w " - Status: %{http_code}\n" http://$PROD_HOST/quotes
-  sleep 1
-done
-
-# Les requêtes 11-15 devraient être limitées (429 Too Many Requests)
-```
-
-## 12. Troubleshooting
-
-### 12.1 Pods en erreur
+### 7.1 Pods en erreur
 
 ```bash
 # Describe pour voir les événements
-kubectl describe pod <pod-name> -n production
+kubectl describe pod <pod-name>
 
-# Logs
-kubectl logs <pod-name> -n production
+# Logs du pod
+kubectl logs <pod-name>
 
 # Logs du conteneur précédent (si crash)
-kubectl logs <pod-name> -n production --previous
+kubectl logs <pod-name> --previous
 ```
 
-### 12.2 Service inaccessible
-
-```bash
-# Vérifier l'Ingress
-kubectl describe ingress haddock-ingress -n production
-
-# Vérifier le Service
-kubectl describe svc users -n production
-
-# Vérifier les endpoints
-kubectl get endpoints users -n production
-
-# Tester depuis un pod interne
-kubectl run -it --rm debug --image=curlimages/curl --restart=Never -n production -- sh
-# Dans le pod :
-curl http://users:5000/health
-```
-
-### 12.3 Problèmes de persistance
+### 7.2 Problèmes de persistance
 
 ```bash
 # Vérifier les PV/PVC
 kubectl get pv
-kubectl get pvc -n production
+kubectl get pvc
 
 # Describe pour voir les problèmes
-kubectl describe pvc redis-pvc -n production
+kubectl describe pvc db-data
 ```
 
-## 13. Mise à jour de l'application
-
-### 13.1 Rolling update
+### 7.3 Service inaccessible
 
 ```bash
-# Nouvelle version de l'image
-docker build -t haddock-users:v1.1 ./microservices/users
+# Vérifier les endpoints
+kubectl get endpoints
 
-# Update du deployment
-kubectl set image deployment/users users=haddock-users:v1.1 -n production
+# Tester depuis un pod interne
+kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- sh
+# Dans le pod :
+curl http://redis:6379
+```
+
+## 8. Mise à jour de l'application
+
+### 8.1 Avec Kubectl
+
+```bash
+# Mettre à jour l'image
+kubectl set image deployment/citation-service citation-service=solaymane/sae503-citation:2.0.0
 
 # Suivre le rollout
-kubectl rollout status deployment/users -n production
+kubectl rollout status deployment/citation-service
 
-# Historique
-kubectl rollout history deployment/users -n production
+# Rollback si nécessaire
+kubectl rollout undo deployment/citation-service
 ```
 
-### 13.2 Rollback
+### 8.2 Avec Helm
 
 ```bash
-# Rollback à la version précédente
-kubectl rollout undo deployment/users -n production
+# Mettre à jour les values et upgrader
+helm upgrade haddock ./helm/haddock --set citation.image.tag="2.0.0"
 
-# Rollback à une version spécifique
-kubectl rollout undo deployment/users -n production --to-revision=2
+# Rollback
+helm rollback haddock 1
 ```
 
-## 14. Monitoring
-
-### 14.1 Dashboard Traefik
+## 9. Commandes utiles
 
 ```bash
-# Port-forward vers le dashboard Traefik
-kubectl port-forward -n kube-system $(kubectl get pods -n kube-system | grep traefik | awk '{print $1}') 9000:9000
-
-# Accès : http://localhost:9000/dashboard/
-```
-
-### 14.2 Métriques Kubernetes
-
-```bash
-# Utilisation par pod
-kubectl top pods -n production
-
-# Utilisation par node
-kubectl top nodes
-```
-
-## 15. Checklist de déploiement
-
-- [ ] Namespaces créés (production, qualification)
-- [ ] Secrets créés dans chaque namespace
-- [ ] ResourceQuota appliqués
-- [ ] Redis déployé avec PVC
-- [ ] Service Users déployé
-- [ ] Service Quotes déployé
-- [ ] Service Search déployé
-- [ ] Services Kubernetes créés
-- [ ] HPA configurés
-- [ ] Ingress configuré avec rate limiting
-- [ ] Tests des endpoints réussis
-- [ ] Test du rate limiting réussi
-- [ ] Health checks fonctionnels
-- [ ] Logs accessibles
-- [ ] Documentation à jour
-- [ ] Bonus : Helm chart créé (optionnel)
-
-## Annexes
-
-### Annexe A : Commandes utiles
-
-```bash
-# Tout voir dans un namespace
-kubectl get all -n production
+# Tout voir dans le cluster
+kubectl get all
 
 # Redémarrer un deployment
-kubectl rollout restart deployment/users -n production
+kubectl rollout restart deployment/citation-service
 
 # Scaler manuellement
-kubectl scale deployment/users --replicas=3 -n production
+kubectl scale deployment/citation-service --replicas=3
 
 # Entrer dans un pod
-kubectl exec -it <pod-name> -n production -- sh
+kubectl exec -it <pod-name> -- sh
 
 # Port-forward pour debug
-kubectl port-forward svc/users 5000:5000 -n production
+kubectl port-forward svc/citation-service 5000:5000
 
-# Supprimer tout un namespace (ATTENTION)
-kubectl delete namespace production
+# Supprimer un déploiement
+kubectl delete -f manifest/citation-service.yml
 ```
 
-### Annexe B : NetworkPolicy (optionnel)
+## 10. Checklist de déploiement
 
-Pour renforcer la sécurité, limiter les communications entre namespaces :
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: deny-from-other-namespaces
-  namespace: production
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector: {}
-```
+- [ ] Redis déployé avec PVC
+- [ ] Service Citation déployé
+- [ ] Service User déployé
+- [ ] Service Recherche déployé
+- [ ] Job d'initialisation Redis exécuté
+- [ ] Services accessibles via NodePort
+- [ ] Tests des endpoints réussis
+- [ ] Logs vérifiés
