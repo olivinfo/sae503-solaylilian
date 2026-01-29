@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: recherche-service
-        image: recherche-image:124
+        image: solaymane/sae503-recherche:1.0.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000

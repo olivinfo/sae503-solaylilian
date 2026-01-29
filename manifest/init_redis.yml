@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
       - name: init-redis
-        image: init-redis-image:125
+        image: solaymane/sae503-init-redis:1.0.0
         volumeMounts:
         - name: csv-data
           mountPath: /BDD_microservice
