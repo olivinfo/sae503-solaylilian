@@ -493,36 +493,3 @@ helm upgrade haddock ./helm/haddock --set citation.image.tag="2.0.0"
 # Rollback
 helm rollback haddock 1
 ```
-
-## 9. Commandes utiles
-
-```bash
-# Tout voir dans le cluster
-kubectl get all
-
-# Redémarrer un deployment
-kubectl rollout restart deployment/citation-service
-
-# Scaler manuellement
-kubectl scale deployment/citation-service --replicas=3
-
-# Entrer dans un pod
-kubectl exec -it <pod-name> -- sh
-
-# Port-forward pour debug
-kubectl port-forward svc/citation-service 5000:5000
-
-# Supprimer un déploiement
-kubectl delete -f manifest/citation-service.yml
-```
-
-## 10. Checklist de déploiement
-
-- [ ] Redis déployé avec PVC
-- [ ] Service Citation déployé
-- [ ] Service User déployé
-- [ ] Service Recherche déployé
-- [ ] Job d'initialisation Redis exécuté
-- [ ] Services accessibles via NodePort
-- [ ] Tests des endpoints réussis
-- [ ] Logs vérifiés
