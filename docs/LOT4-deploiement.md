@@ -575,114 +575,234 @@ kubectl apply -f k8s/production/ingress.yaml
 # Répéter avec namespace qualification
 ```
 
-## 10. Option Helm (Bonus)
+## 10. Déploiement avec Helm
 
-### 10.1 Structure du chart Helm
+### 10.1 Pourquoi Helm ?
+
+Helm est le gestionnaire de paquets pour Kubernetes. Voici pourquoi nous l'utilisons :
+
+| Avantage | Description |
+|----------|-------------|
+| **Templating** | Les valeurs sont centralisées dans `values.yaml`, évitant la duplication |
+| **Versioning** | Chaque déploiement est versionné, facilitant les rollbacks |
+| **Reproductibilité** | Un seul fichier de valeurs définit tout l'environnement |
+| **Simplicité** | Une commande pour déployer toute l'application |
+| **Gestion des releases** | Helm garde l'historique des déploiements |
+
+### 10.2 Structure du chart Helm
+
+Le chart Helm créé pour ce projet suit une structure simple et minimaliste :
 
 ```
 helm/
 └── haddock/
-    ├── Chart.yaml
-    ├── values.yaml
-    ├── values-production.yaml
-    ├── values-qualification.yaml
+    ├── Chart.yaml              # Métadonnées du chart
+    ├── values.yaml             # Valeurs par défaut
     └── templates/
-        ├── namespace.yaml
-        ├── secrets.yaml
-        ├── redis/
-        │   ├── statefulset.yaml
-        │   ├── service.yaml
-        │   └── pvc.yaml
-        ├── users/
-        │   ├── deployment.yaml
-        │   ├── service.yaml
-        │   ├── configmap.yaml
-        │   └── hpa.yaml
-        ├── quotes/
-        │   └── ...
-        ├── search/
-        │   └── ...
-        └── ingress.yaml
+        ├── _helpers.tpl        # Fonctions de templating réutilisables
+        ├── redis-pv.yaml       # PersistentVolume et PVC pour Redis
+        ├── redis-deployment.yaml
+        ├── redis-service.yaml
+        ├── citation-deployment.yaml
+        ├── citation-service.yaml
+        ├── user-deployment.yaml
+        ├── user-service.yaml
+        ├── recherche-deployment.yaml
+        ├── recherche-service.yaml
+        └── init-redis-job.yaml # Job d'initialisation des données
 ```
 
-### 10.2 Chart.yaml
+### 10.3 Chart.yaml
+
+Le fichier `Chart.yaml` contient les métadonnées du chart :
 
 ```yaml
 apiVersion: v2
 name: haddock
-description: Application de citations du capitaine Haddock
+description: Application de gestion des citations du Capitaine Haddock
+type: application
 version: 1.0.0
-appVersion: "1.0"
+appVersion: "1.0.0"
+maintainers:
+  - name: Lilian GAUDIN
+  - name: Solaymane El-Kaldaoui
 ```
 
-### 10.3 values.yaml (extrait)
+### 10.4 values.yaml
+
+Le fichier `values.yaml` centralise toutes les valeurs configurables :
 
 ```yaml
-environment: production
+# Configuration globale
+global:
+  imagePullPolicy: IfNotPresent
 
-namespace:
-  name: production
-
-image:
-  repository: localhost
-  pullPolicy: IfNotPresent
-  tag: latest
-
-users:
-  replicas: 2
-  resources:
-    requests:
-      memory: 64Mi
-      cpu: 100m
-    limits:
-      memory: 128Mi
-      cpu: 200m
-
+# Redis
 redis:
-  storage: 1Gi
-  resources:
-    requests:
-      memory: 128Mi
-      cpu: 100m
-    limits:
-      memory: 256Mi
-      cpu: 200m
+  image: redis:alpine
+  port: 6379
+  storage:
+    size: 1Gi
+    hostPath: /home/user/sae503-solaylilian/BDD_microservice/data
 
-ingress:
-  host: production.192.168.1.100.nip.io
-  rateLimit:
-    average: 10
-    period: 1m
+# Service Citation
+citation:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: citation-image
+    tag: "124"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30002
 
-secrets:
-  adminKey: "change_me"
+# Service User
+user:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: user-image
+    tag: "124"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30001
+
+# Service Recherche
+recherche:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: recherche-image
+    tag: "124"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30003
+
+# Job d'initialisation Redis
+initRedis:
+  enabled: true
+  image:
+    name: init-redis-image
+    tag: "125"
+  dataPath: /data/bdd
 ```
 
-### 10.4 Déploiement avec Helm
+### 10.5 Comment fonctionne le templating ?
+
+Chaque template utilise les valeurs de `values.yaml` via la syntaxe Go :
+
+```yaml
+# Exemple : citation-deployment.yaml
+{{- if .Values.citation.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-citation
+spec:
+  replicas: {{ .Values.citation.replicaCount }}
+  # ...
+          image: {{ .Values.citation.image.name }}:{{ .Values.citation.image.tag }}
+{{- end }}
+```
+
+**Explications :**
+- `{{ .Values.xxx }}` : Accède aux valeurs du fichier `values.yaml`
+- `{{ .Release.Name }}` : Nom de la release Helm (passé lors du `helm install`)
+- `{{- if ... }}` : Condition pour activer/désactiver un composant
+- `{{- include "haddock.labels" . }}` : Inclut les labels définis dans `_helpers.tpl`
+
+### 10.6 Commandes de déploiement
 
 ```bash
+# Vérifier la syntaxe du chart (dry-run)
+helm template haddock ./helm/haddock
+
+# Installer l'application
+helm install haddock ./helm/haddock
+
+# Installer avec un namespace spécifique
+helm install haddock ./helm/haddock --namespace sae503 --create-namespace
+
+# Voir le statut
+helm status haddock
+
+# Lister les releases
+helm list
+
+# Mettre à jour après modification des values
+helm upgrade haddock ./helm/haddock
+
+# Désinstaller
+helm uninstall haddock
+```
+
+### 10.7 Personnalisation des valeurs
+
+Pour modifier les valeurs sans éditer `values.yaml`, utilisez `--set` :
+
+```bash
+# Changer le nombre de réplicas
+helm install haddock ./helm/haddock --set citation.replicaCount=3
+
+# Changer le tag de l'image
+helm install haddock ./helm/haddock --set citation.image.tag="125"
+
+# Désactiver un service
+helm install haddock ./helm/haddock --set recherche.enabled=false
+
+# Combiner plusieurs modifications
+helm install haddock ./helm/haddock \
+  --set citation.replicaCount=2 \
+  --set user.replicaCount=2 \
+  --set recherche.replicaCount=2
+```
+
+### 10.8 Création de fichiers values par environnement
+
+Pour gérer plusieurs environnements, créez des fichiers de valeurs spécifiques :
+
+**values-production.yaml :**
+```yaml
+citation:
+  replicaCount: 2
+user:
+  replicaCount: 2
+recherche:
+  replicaCount: 2
+```
+
+**values-qualification.yaml :**
+```yaml
+citation:
+  replicaCount: 1
+user:
+  replicaCount: 1
+recherche:
+  replicaCount: 1
+```
+
+**Déploiement :**
+```bash
 # Production
-helm install haddock-prod ./helm/haddock \
-  --namespace production \
-  --create-namespace \
-  --values ./helm/haddock/values-production.yaml
+helm install haddock-prod ./helm/haddock -f ./helm/haddock/values-production.yaml
 
 # Qualification
-helm install haddock-qual ./helm/haddock \
-  --namespace qualification \
-  --create-namespace \
-  --values ./helm/haddock/values-qualification.yaml
+helm install haddock-qual ./helm/haddock -f ./helm/haddock/values-qualification.yaml
+```
 
-# Upgrade
-helm upgrade haddock-prod ./helm/haddock \
-  --namespace production \
-  --values ./helm/haddock/values-production.yaml
+### 10.9 Rollback
 
-# Liste des releases
-helm list --all-namespaces
+Helm conserve l'historique des déploiements :
 
-# Uninstall
-helm uninstall haddock-prod -n production
+```bash
+# Voir l'historique
+helm history haddock
+
+# Revenir à une version précédente
+helm rollback haddock 1
 ```
 
 ## 11. Vérifications
