@@ -1,0 +1,9 @@
+apiVersion: v2
+name: haddock
+description: Application de gestion des citations du Capitaine Haddock
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Lilian GAUDIN
+  - name: Solaymane El-Kaldaoui

@@ -1,0 +1,54 @@
+# Configuration globale
+global:
+  imagePullPolicy: IfNotPresent
+
+# Redis
+redis:
+  image: redis:alpine
+  port: 6379
+  storage:
+    size: 1Gi
+    hostPath: /home/user/sae503-solaylilian/BDD_microservice/data
+
+# Service Citation
+citation:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: solaymane/sae503-citation
+    tag: "1.0.0"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30002
+# Service User
+user:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: solaymane/sae503-user
+    tag: "1.0.0"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30001
+
+# Service Recherche
+recherche:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: solaymane/sae503-recherche
+    tag: "1.0.0"
+  service:
+    type: LoadBalancer
+    port: 5000
+    nodePort: 30003
+
+# Job d'initialisation Redis
+initRedis:
+  enabled: true
+  image:
+    name: solaymane/sae503-init-redis
+    tag: "1.0.0"
+  dataPath: /data/bdd

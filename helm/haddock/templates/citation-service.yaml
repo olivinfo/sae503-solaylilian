@@ -1,0 +1,16 @@
+{{- if .Values.citation.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: citation-service
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.citation.service.type }}
+  selector:
+    app: citation-service
+  ports:
+    - port: {{ .Values.citation.service.port }}
+      targetPort: 5000
+      nodePort: {{ .Values.citation.service.nodePort }}
+{{- end }}

@@ -180,7 +180,11 @@ kubectl get pods -n kube-system | grep metrics-server
 
 ```bash
 # Installation de Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+sudo apt-get install curl gpg apt-transport-https --yes
+curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
 
 # Vérification
 helm version
@@ -192,8 +196,6 @@ sudo dpkg -i trivy_0.48.0_Linux-64bit.deb
 # Vérification
 trivy --version
 
-# Optionnel : k9s (interface TUI pour Kubernetes)
-curl -sS https://webinstall.dev/k9s | bash
 ```
 
 ## 4. Configuration du réseau
