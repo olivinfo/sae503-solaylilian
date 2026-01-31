@@ -4,13 +4,18 @@ from flask import Flask, request, jsonify
 from redis import Redis
 from flasgger import Swagger
 from functools import wraps
+from dotenv import load_dotenv
+
+
+# load .env file to environment
+load_dotenv()
 
 # Configuration des variables d'environnement
-REDIS_HOST = "redis"
-REDIS_PORT =  6379
-REDIS_DB = 0
-APP_PORT = 5000
-ADMIN_KEY = "default_key"
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT =  int(os.getenv("REDIS_PORT"))
+REDIS_DB = os.getenv("REDIS_DB")
+APP_PORT = int(os.getenv("APP_PORT"))
+ADMIN_KEY = os.getenv("ADMIN_KEY")
 # Initialisation de Flask et Swagger
 app = Flask(__name__)
 swagger = Swagger(app)
