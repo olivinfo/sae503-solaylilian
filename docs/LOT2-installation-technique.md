@@ -185,7 +185,44 @@ trivy --version
 
 ## 4. Configuration du réseau
 
+### 4.1 Configuration du réseau des noeuds
 On modifie les fichiers dans /etc/networking/interfaces avec la bonne adresse IP, la bonne route etc.
+
 
 ## 6. Installation et configuration de Traefik
 
+### Configuration réseau pour accéder à traefik depuis l'extérieur de la VM
+
+Pour accéder à nos ingress depuis la VM uniquement, nous aurions pu utiliser **minikube tunnel**, qui aurait simplement créé une route sur la VM avec une IP pour accéder au service traefik.
+Malheureusement, cela ne suffirait pas pour y accéder depuis l'extérieur, pour cela, un plan en 3 étapes est nécéssaire : 
+1. Transformer le service traefik en NodePort avec un port 3000X
+2. Redirection des ports 80 et 443 vers les ports du service
+3. Accès depuis l'extérieur
+
+#### Modification du service traefik 
+On a choisi d'utiliser le port 30080 pour le HTTP et le port 30443 pour le TLS.
+
+```bash
+kubectl -n traefik patch svc traefik -p '{
+  "spec":{
+    "type":"NodePort",
+    "ports":[
+      {"name":"web","port":80,"targetPort":80,"nodePort":30080},
+      {"name":"websecure","port":443,"targetPort":443,"nodePort":30443}
+    ]
+  }
+}'
+```
+
+#### Redirection des ports via iptables
+
+```bash
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80  -j REDIRECT --to-ports 30080
+sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-ports 30443
+```
+
+#### Test depuis l'extérieur
+
+```bash
+curl <app>.<IPVM>.nip.io
+```
