@@ -107,7 +107,10 @@ minikube version
 **Sur la VM Production** :
 ```bash
 # Démarrer Minikube avec Docker driver (profil par défaut)
-minikube start --driver=docker 
+minikube start -p prod-env --nodes 3
+
+# Utiliser le profil prod-env par défaut
+minikube profile prod-env
 
 minikube status
 
@@ -122,7 +125,10 @@ kubectl cluster-info
 **Sur la VM Qualification** :
 ```bash
 # Démarrer Minikube (qualification, profil par défaut)
-minikube start --driver=docker
+minikube start -p dev-env --nodes 3
+
+# Utiliser le profil dev(env par défaut
+minikube profile dev-env
 
 # Vérifier le statut
 minikube status
