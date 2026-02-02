@@ -80,61 +80,7 @@ Points clés :
 
 ## 6. Bonnes pratiques appliquées
 
-### 6.1 Principes 12-Factor
-
-| Factor | Application |
-|--------|-------------|
-| **I. Codebase** | Un dépôt Git, plusieurs déploiements |
-| **II. Dependencies** | `requirements.txt` explicite |
-| **III. Config** | Variables d'environnement (pas de valeurs en dur) |
-| **IV. Backing services** | Redis comme ressource attachée |
-| **V. Build, release, run** | Séparation stricte (Docker build, K8s deploy) |
-| **VI. Processes** | Services stateless, état dans Redis |
-| **VII. Port binding** | Exposition sur port 5000 |
-| **VIII. Concurrency** | Scaling horizontal via Kubernetes |
-| **IX. Disposability** | Démarrage rapide, shutdown graceful |
-| **X. Dev/prod parity** | Même conteneur partout |
-| **XI. Logs** | Logs vers stdout/stderr |
-| **XII. Admin processes** | Scripts séparés si nécessaire |
-
-### 6.2 Sécurité
-
-- **Pas de secrets dans le code** : Variables d'environnement uniquement
-- **Utilisateur non-root** : USER dans Dockerfile
-- **Images minimales** : slim ou alpine
-- **Dépendances à jour** : Versions spécifiques dans requirements.txt
-- **SecurityContext Kubernetes** : runAsNonRoot, readOnlyRootFilesystem
-
-### 6.3 Logging
-
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Utilisation
-logger.info("Service démarré")
-logger.error("Erreur lors de la connexion à Redis")
-```
-
-### 6.4 Health checks
-
-Chaque service expose un endpoint `/health` :
-
-```python
-@app.route('/health', methods=['GET'])
-def health():
-    """Health check endpoint"""
-    try:
-        redis_client.ping()
-        return jsonify({"status": "healthy", "redis": "connected"}), 200
-    except Exception as e:
-        return jsonify({"status": "unhealthy", "error": str(e)}), 503
-```
+[À compléter]
 
 ## 7. Fichiers de données initiales
 
