@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: citation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: citation-service
+  template:
+    metadata:
+      labels:
+        app: citation-service
+    spec:
+      containers:
+      - name: citation-service
+        image: solaymane/sae503-citation:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: citation-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30002
+  selector:
+    app: citation-service

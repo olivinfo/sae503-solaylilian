@@ -1,0 +1,25 @@
+{{- if .Values.recherche.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-recherche
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+    app: recherche-service
+spec:
+  replicas: {{ .Values.recherche.replicaCount }}
+  selector:
+    matchLabels:
+      app: recherche-service
+  template:
+    metadata:
+      labels:
+        app: recherche-service
+    spec:
+      containers:
+        - name: recherche-service
+          image: {{ .Values.recherche.image.name }}:{{ .Values.recherche.image.tag }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 5000
+{{- end }}

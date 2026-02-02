@@ -1,0 +1,16 @@
+{{- if .Values.user.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.user.service.type }}
+  selector:
+    app: user-service
+  ports:
+    - port: {{ .Values.user.service.port }}
+      targetPort: 5000
+      nodePort: {{ .Values.user.service.nodePort }}
+{{- end }}

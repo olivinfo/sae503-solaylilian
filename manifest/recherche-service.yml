@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recherche-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recherche-service
+  template:
+    metadata:
+      labels:
+        app: recherche-service
+    spec:
+      containers:
+      - name: recherche-service
+        image: solaymane/sae503-recherche:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recherche-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30003
+  selector:
+    app: recherche-service

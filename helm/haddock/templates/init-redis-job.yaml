@@ -1,0 +1,24 @@
+{{- if .Values.initRedis.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-init-redis
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+        - name: init-redis
+          image: {{ .Values.initRedis.image.name }}:{{ .Values.initRedis.image.tag }}
+          volumeMounts:
+            - name: csv-data
+              mountPath: /BDD_microservice
+              readOnly: true
+      volumes:
+        - name: csv-data
+          hostPath:
+            path: {{ .Values.initRedis.dataPath }}
+            type: Directory
+      restartPolicy: OnFailure
+{{- end }}

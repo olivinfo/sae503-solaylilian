@@ -28,7 +28,7 @@ Chaque VM exécute sa propre instance Minikube, assurant une isolation complète
 | **RAM** | 6 Go |
 | **Disque** | ~40 Go |
 | **OS** | Debian 13 |
-| **IP** | XXXXXXXXXXXX |
+| **IP** | 172.17.253.220 |
 
 #### VM Qualification
 
@@ -39,7 +39,7 @@ Chaque VM exécute sa propre instance Minikube, assurant une isolation complète
 | **RAM** | 6 Go |
 | **Disque** | ~40 Go |
 | **OS** | Debian 13 |
-| **IP** | XXXXXXXXXXXXXXx |
+| **IP** | 172.17.253.219 |
 
 ## 3. Installation de Kubernetes
 
@@ -84,32 +84,12 @@ sudo apt update && sudo apt upgrade -y
 # Installation de Docker
 sudo apt install -y docker.io
 
-# Ajouter l'utilisateur au groupe docker
-sudo usermod -aG docker $USER
-newgrp docker
-
 # Vérifier Docker
 docker --version
 docker ps
 ```
 
-#### 3.3.2 Installation de kubectl
-
-```bash
-# Télécharger kubectl
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
-# Rendre exécutable
-chmod +x kubectl
-
-# Déplacer dans le PATH
-sudo mv kubectl /usr/local/bin/
-
-# Vérifier
-kubectl version --client
-```
-
-#### 3.3.3 Installation de Minikube
+#### 3.3.2 Installation de Minikube
 
 ```bash
 # Télécharger Minikube
@@ -126,10 +106,9 @@ minikube version
 
 **Sur la VM Production** :
 ```bash
-# Démarrer Minikube avec Docker driver (ressources production)
-minikube start --driver=docker --cpus=4 --memory=6144 --disk-size=20g
+# Démarrer Minikube avec Docker driver (profil par défaut)
+minikube start --driver=docker 
 
-# Vérifier le statut
 minikube status
 
 # Vérifier les nœuds
@@ -142,8 +121,8 @@ kubectl cluster-info
 
 **Sur la VM Qualification** :
 ```bash
-# Démarrer Minikube avec ressources réduites (qualification)
-minikube start --driver=docker --cpus=2 --memory=4096 --disk-size=15g
+# Démarrer Minikube (qualification, profil par défaut)
+minikube start --driver=docker
 
 # Vérifier le statut
 minikube status
@@ -160,7 +139,7 @@ kubectl cluster-info
 **Sur les deux VMs** (production et qualification) :
 
 ```bash
-# Activer l'Ingress Controller (NGINX par défaut)
+# Activer l'Ingress Controller
 minikube addons enable ingress
 
 # Activer le metrics-server pour HPA
@@ -180,9 +159,12 @@ kubectl get pods -n kube-system | grep metrics-server
 
 ```bash
 # Installation de Helm
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 
-chmod +x get_helm.sh
-./get_helm.sh
+sudo apt-get install curl gpg apt-transport-https --yes
+curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
 # Vérification
 helm version
 
@@ -197,40 +179,7 @@ trivy --version
 
 ## 4. Configuration du réseau
 
-[À compléter]
-
-## 5. Configuration de Kubernetes
-
-[À compléter]
+On modifie les fichiers dans /etc/networking/interfaces avec la bonne adresse IP, la bonne route etc.
 
 ## 6. Installation et configuration de Traefik
 
-[À compléter]
-
-## 7. Configuration des Secrets
-
-[À compléter]
-
-## 8. Schéma de principe
-
-[À compléter]
-
-## 9. Procédure de vérification
-
-[À compléter]
-
-## 10. Maintenance et exploitation
-
-[À compléter]
-
-## 11. Avantages et limitations de l'architecture 2 VMs
-
-[À compléter]
-
-## 12. Sécurité de l'infrastructure
-
-[À compléter]
-
-## Annexes
-
-[À compléter]

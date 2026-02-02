@@ -13,19 +13,70 @@ La refactorisation respecte les principes des [12-Factor App](https://12factor.n
 
 ## 2. Architecture de l'application refactorisée
 
-[À compléter]
+
+### 2.2 Répartition des endpoints
+
+| Microservice | Endpoints | Méthodes |
+|--------------|-----------|----------|
+| **Users** | `/users` | GET, POST |
+| **Quotes** | `/quotes` | GET, POST |
+|           | `/quotes/<id>` | DELETE |
+| **Search** | `/search` | GET |
 
 ## 3. Service Users
 
-[À compléter]
+### 3.1 Responsabilités
+- Gestion des utilisateurs (CRUD)
+- Authentification (bonus)
+- Initialisation depuis CSV
+
+### 3.2 Structure du code
+
+**Fichier** : `microservices/users/app.py`
+
+Points clés :
+- Endpoints : `GET /users`, `POST /users`
+- Connexion à Redis via variables d'environnement
+- Authentification via `ADMIN_KEY`
+- Health check : `GET /health`
+- Documentation Swagger : `/apidocs`
 
 ## 4. Service Quotes
 
-[À compléter]
+### 4.1 Responsabilités
+- Gestion des citations (CRUD)
+- Initialisation depuis CSV
+- Suppression par ID
+
+### 4.2 Structure du code
+
+**Fichier** : `microservices/quotes/app.py`
+
+Points clés :
+- Endpoints : `GET /quotes`, `POST /quotes`, `DELETE /quotes/<id>`
+- Connexion à Redis via variables d'environnement
+- Authentification via `ADMIN_KEY` pour POST/DELETE
+- Health check : `GET /health`
+- Documentation Swagger : `/apidocs`
 
 ## 5. Service Search
 
-[À compléter]
+### 5.1 Responsabilités
+- Recherche de citations par mot-clé
+- Lecture seule dans Redis
+
+### 5.2 Structure du code
+
+**Fichier** : `microservices/search/app.py`
+
+Points clés :
+- Endpoint : `GET /search?keyword=<mot-clé>`
+- Connexion à Redis via variables d'environnement
+- Authentification via `ADMIN_KEY`
+- Recherche insensible à la casse
+- Health check : `GET /health`
+- Documentation Swagger : `/apidocs`
+
 
 ## 6. Bonnes pratiques appliquées
 
@@ -33,37 +84,26 @@ La refactorisation respecte les principes des [12-Factor App](https://12factor.n
 
 ## 7. Fichiers de données initiales
 
-[À compléter]
+### 7.1 Format CSV
 
-## 8. Structure du repository Git
+**initial_data_users.csv** :
+```csv
+id,name,password
+1,admin,admin123
+2,user1,password1
+3,user2,password2
+```
 
-[À compléter]
+**initial_data_quotes.csv** :
+```csv
+quote
+Bachi-bouzouk!
+Tonnerre de Brest!
+Mille millions de mille sabords!
+Moule à gaufres!
+Ectoplasme!
+```
 
-## 9. Build et test des images Docker
+### 7.2 Chargement initial
 
-[À compléter]
-
-## 10. Bonus : Authentification basée sur les utilisateurs
-
-[À compléter]
-
-## 11. Checklist de refactorisation
-
-- [ ] Service Users créé et fonctionnel
-- [ ] Service Quotes créé et fonctionnel
-- [ ] Service Search créé et fonctionnel
-- [ ] Dockerfile pour chaque service
-- [ ] Images Docker non-root
-- [ ] Variables d'environnement pour la configuration
-- [ ] Health checks implémentés
-- [ ] Logs vers stdout/stderr
-- [ ] CSV de données initiales
-- [ ] Documentation Swagger fonctionnelle
-- [ ] Tests locaux avec Docker Compose
-- [ ] Scan Trivy sans vulnérabilités critiques
-- [ ] Code versé dans Git
-- [ ] Bonus authentification (optionnel)
-
-## Annexes
-
-[À compléter]
+Le chargement des données CSV se fait au démarrage du service si Redis est vide via le job init-redis :

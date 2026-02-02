@@ -21,14 +21,6 @@ Ce document d'architecture technique définit et documente l'architecture néces
 
 ## 2. Vue d'ensemble de l'architecture
 
-### 2.1 Schéma d'architecture global
-
-```
-[À créer : Diagramme montrant les environnements, microservices, Redis, Traefik]
-```
-
-### 2.2 Principes architecturaux
-
 #### Architecture microservices
 L'application monolithique sera refactorisée en 3 microservices :
 - **Service Users** : Gestion des utilisateurs

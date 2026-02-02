@@ -1,0 +1,25 @@
+{{- if .Values.citation.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-citation
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+    app: citation-service
+spec:
+  replicas: {{ .Values.citation.replicaCount }}
+  selector:
+    matchLabels:
+      app: citation-service
+  template:
+    metadata:
+      labels:
+        app: citation-service
+    spec:
+      containers:
+        - name: citation-service
+          image: {{ .Values.citation.image.name }}:{{ .Values.citation.image.tag }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: 5000
+{{- end }}

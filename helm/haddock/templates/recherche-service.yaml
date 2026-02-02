@@ -1,0 +1,16 @@
+{{- if .Values.recherche.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: recherche-service
+  labels:
+    {{- include "haddock.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.recherche.service.type }}
+  selector:
+    app: recherche-service
+  ports:
+    - port: {{ .Values.recherche.service.port }}
+      targetPort: 5000
+      nodePort: {{ .Values.recherche.service.nodePort }}
+{{- end }}
