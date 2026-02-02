@@ -431,47 +431,10 @@ curl http://<IP-NODE>:30001/users
 curl http://<IP-NODE>:30003/search?q=tonnerre
 ```
 
-## 7. Troubleshooting
 
-### 7.1 Pods en erreur
+## 7. Mise à jour de l'application
 
-```bash
-# Describe pour voir les événements
-kubectl describe pod <pod-name>
-
-# Logs du pod
-kubectl logs <pod-name>
-
-# Logs du conteneur précédent (si crash)
-kubectl logs <pod-name> --previous
-```
-
-### 7.2 Problèmes de persistance
-
-```bash
-# Vérifier les PV/PVC
-kubectl get pv
-kubectl get pvc
-
-# Describe pour voir les problèmes
-kubectl describe pvc db-data
-```
-
-### 7.3 Service inaccessible
-
-```bash
-# Vérifier les endpoints
-kubectl get endpoints
-
-# Tester depuis un pod interne
-kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- sh
-# Dans le pod :
-curl http://redis:6379
-```
-
-## 8. Mise à jour de l'application
-
-### 8.1 Avec Kubectl
+### 7.1 Avec Kubectl
 
 ```bash
 # Mettre à jour l'image
@@ -484,7 +447,7 @@ kubectl rollout status deployment/citation-service
 kubectl rollout undo deployment/citation-service
 ```
 
-### 8.2 Avec Helm
+### 7.2 Avec Helm
 
 ```bash
 # Mettre à jour les values et upgrader
