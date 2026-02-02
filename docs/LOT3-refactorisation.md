@@ -77,14 +77,9 @@ Points clés :
 - Health check : `GET /health`
 - Documentation Swagger : `/apidocs`
 
+## 6. Fichiers de données initiales
 
-## 6. Bonnes pratiques appliquées
-
-[À compléter]
-
-## 7. Fichiers de données initiales
-
-### 7.1 Format CSV
+### 6.1 Format CSV
 
 **initial_data_users.csv** :
 ```csv
@@ -104,6 +99,6 @@ Moule à gaufres!
 Ectoplasme!
 ```
 
-### 7.2 Chargement initial
+### 6.2 Chargement initial
 
 Le chargement des données CSV se fait au démarrage du service si Redis est vide via le job init-redis :
