@@ -203,7 +203,7 @@ Malheureusement, cela ne suffirait pas pour y accéder depuis l'extérieur, pour
 On a choisi d'utiliser le port 30080 pour le HTTP et le port 30443 pour le TLS.
 
 ```bash
-kubectl -n traefik patch svc traefik -p '{
+kubectl -n kube-system patch svc traefik -p '{
   "spec":{
     "type":"NodePort",
     "ports":[
