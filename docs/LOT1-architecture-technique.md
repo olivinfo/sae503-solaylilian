@@ -245,25 +245,9 @@ En environnement multi-nœuds, il faudrait utiliser :
 - Meilleure sécurité
 - Conformité aux bonnes pratiques
 
-## 6. Sécurité
+## 6. Contraintes et limitations
 
-### 6.1 Principes de sécurité
-
-- **Secrets Kubernetes** : Toutes les données sensibles
-- **SecurityContext** : Pas d'exécution en root
-- **NetworkPolicy** : Isolation réseau entre namespaces
-- **RBAC** : Contrôle d'accès aux ressources Kubernetes
-- **Image scanning** : Trivy pour détecter les vulnérabilités
-
-### 6.2 Authentification
-
-- Clé API dans les Secrets Kubernetes
-- Injection via variables d'environnement
-- Rotation possible sans rebuild
-
-## 7. Contraintes et limitations
-
-### 7.1 Mono-nœud
+### 6.1 Mono-nœud
 
 **Limitations** :
 - Pas de haute disponibilité native
@@ -275,7 +259,7 @@ En environnement multi-nœuds, il faudrait utiliser :
 - PersistentVolume en `hostPath`
 - Pas de distribution de charge physique
 
-### 7.2 Évolution vers multi-nœuds
+### 6.2 Évolution vers multi-nœuds
 
 **Changements nécessaires** :
 - Stockage partagé (NFS, Ceph, Cloud Storage)
@@ -283,7 +267,7 @@ En environnement multi-nœuds, il faudrait utiliser :
 - Anti-affinity rules pour distribution des pods
 - LoadBalancer externe
 
-## 8. Conformité 12-Factor
+## 7. Conformité 12-Factor
 
 | Factor | Mise en œuvre |
 |--------|---------------|
@@ -300,32 +284,3 @@ En environnement multi-nœuds, il faudrait utiliser :
 | 11. Logs | stdout/stderr, collecte K8s |
 | 12. Admin processes | Jobs Kubernetes |
 
-## 9. Monitoring et observabilité
-
-### 9.1 Logs
-- Logs applicatifs vers stdout/stderr
-- Collecte par Kubernetes
-- [À définir : ELK, Loki, etc.]
-
-### 9.2 Métriques
-- Dashboard Traefik
-- Kubernetes metrics
-- [À définir : Prometheus, Grafana]
-
-### 9.3 Health checks
-- Liveness probes
-- Readiness probes
-
-## 10. Schémas et diagrammes
-
-### 10.1 Architecture globale
-[À créer]
-
-### 10.2 Architecture réseau
-[À créer]
-
-### 10.3 Flux de données
-[À créer]
-
-### 10.4 Déploiement Kubernetes
-[À créer]
