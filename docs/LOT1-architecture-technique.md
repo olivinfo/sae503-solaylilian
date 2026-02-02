@@ -78,8 +78,6 @@ L'application monolithique sera refactorisée en 3 microservices :
 ### 3.2 Diagramme de flux
 
 ```
-[À créer : Diagramme de séquence montrant le flux des requêtes]
-
 Utilisateur → Traefik → Service approprié → Redis
 ```
 
